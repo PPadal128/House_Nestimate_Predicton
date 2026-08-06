@@ -1,0 +1,1427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nestimate — Know your home's real worth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,400;0,600;1,600&family=Anton&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --onyx:#0B0C0D;
+  --graphite:#605D5B;
+  --azure:#333F48;
+  --orange:#FA5F05;
+  --paper:#F6F6F6;
+  --paper-solid:#FFFFFF;
+  --amber:#FDB78F;
+  --mint:#7FD8BE;
+  --violet:#8F8CFF;
+  --glass-bg: rgba(19,20,22,0.54);
+  --glass-strong: rgba(23,24,27,0.72);
+  --glass-border: rgba(255,255,255,0.16);
+  --glass-line: rgba(255,255,255,0.34);
+  --nav-h:72px;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth; scroll-padding-top:calc(var(--nav-h) + 20px);}
+body{
+  margin:0;
+  min-width:320px;
+  overflow-x:hidden;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(250,95,5,0.18), transparent 30rem),
+    radial-gradient(circle at 92% 34%, rgba(127,216,190,0.12), transparent 28rem),
+    linear-gradient(180deg,#070809 0%,#0B0C0D 34%,#11100F 100%);
+  color:var(--paper);
+  font-family:'Roboto',sans-serif;
+  font-size:15px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+body.nav-open{overflow:hidden;}
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:-2;
+  pointer-events:none;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size:72px 72px;
+  mask-image:linear-gradient(to bottom, rgba(0,0,0,0.75), transparent 82%);
+}
+h1,h2,h3,.display{
+  font-family:'Bodoni Moda',serif;
+  font-weight:600;
+  margin:0;
+  overflow-wrap:break-word;
+}
+.eyebrow, .label-caps, .step-label, nav a, .btn{
+  font-family:'Anton',sans-serif;
+  font-weight:400;
+  text-transform:uppercase;
+  letter-spacing:1.2px;
+}
+@media (prefers-reduced-motion: reduce){
+  *, *::before, *::after{animation:none !important; transition:none !important; scroll-behavior:auto !important;}
+}
+
+/* layout helpers */
+.wrap{max-width:1200px; margin:0 auto; padding:0 24px; position:relative; z-index:2;}
+section, footer{position:relative;}
+.site-shell{position:relative; isolation:isolate; overflow:hidden;}
+.section-node{z-index:1;}
+.section-node + .section-node{margin-top:-42px;}
+.section-node::before{
+  content:"";
+  position:absolute;
+  left:50%;
+  top:-1px;
+  width:min(760px,78vw);
+  height:74px;
+  transform:translateX(-50%);
+  border-radius:0 0 999px 999px;
+  background:linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0));
+  filter:blur(0.2px);
+  pointer-events:none;
+}
+.section-node:nth-of-type(even)::before{border-radius:999px 999px 0 0; top:auto; bottom:-1px;}
+.reveal{
+  opacity:0;
+  transform:translateY(28px) scale(0.985);
+  transition:opacity 700ms ease, transform 700ms cubic-bezier(.2,.8,.2,1);
+}
+.reveal.in-view{opacity:1; transform:translateY(0) scale(1);}
+
+/* animated path */
+.story-line{
+  position:absolute;
+  inset:0;
+  z-index:1;
+  pointer-events:none;
+  overflow:hidden;
+}
+.story-line svg{
+  position:absolute;
+  left:50%;
+  top:90px;
+  width:min(980px,112vw);
+  height:calc(100% - 80px);
+  transform:translateX(-50%);
+  overflow:visible;
+}
+.story-path-base,
+.story-path-glow{
+  fill:none;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.story-path-base{
+  stroke:rgba(255,255,255,0.11);
+  stroke-width:2;
+}
+.story-path-glow{
+  stroke:url(#lineGradient);
+  stroke-width:3;
+  stroke-dasharray:1;
+  stroke-dashoffset:1;
+  filter:drop-shadow(0 0 10px rgba(250,95,5,0.7)) drop-shadow(0 0 24px rgba(127,216,190,0.28));
+  transition:stroke-dashoffset 80ms linear;
+}
+.line-orb{
+  position:absolute;
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  background:var(--paper-solid);
+  box-shadow:0 0 18px rgba(250,95,5,0.9), 0 0 38px rgba(250,95,5,0.35);
+  transform:translate(-50%,-50%);
+  opacity:0.85;
+}
+
+/* NAVBAR */
+header.nav{
+  position:sticky; top:0; z-index:50;
+  min-height:var(--nav-h);
+  background:linear-gradient(180deg, rgba(12,13,15,0.84), rgba(12,13,15,0.62));
+  -webkit-backdrop-filter:blur(22px) saturate(150%);
+  backdrop-filter:blur(22px) saturate(150%);
+  border-bottom:1px solid rgba(255,255,255,0.12);
+  box-shadow:0 16px 40px rgba(0,0,0,0.28);
+}
+.nav-inner{position:relative; display:flex; align-items:center; justify-content:space-between; min-height:var(--nav-h); padding:12px 24px; max-width:1200px; margin:0 auto; gap:18px;}
+.wordmark{font-family:'Bodoni Moda',serif; font-style:italic; font-weight:600; font-size:22px; color:var(--paper-solid);}
+.wordmark span{color:var(--orange);}
+.nav-links{display:flex; align-items:center; gap:8px; list-style:none; margin:0; padding:6px; border:1px solid rgba(255,255,255,0.08); border-radius:999px; background:rgba(255,255,255,0.035);}
+.nav-links a{display:inline-flex; align-items:center; min-height:34px; padding:0 14px; border-radius:999px; color:var(--paper); font-size:11px; text-decoration:none; opacity:0.78; transition:opacity 180ms ease, color 180ms ease, background 180ms ease, box-shadow 180ms ease;}
+.nav-links a:hover,
+.nav-links a.active{opacity:1; color:var(--paper-solid); background:rgba(250,95,5,0.16); box-shadow:inset 0 0 0 1px rgba(250,95,5,0.24), 0 0 24px rgba(250,95,5,0.12);}
+.nav-cta{display:none;}
+@media(min-width:768px){.nav-cta{display:inline-flex;}}
+.nav-toggle{
+  display:none;
+  flex:none;
+  width:42px;
+  height:42px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,0.16);
+  background:rgba(255,255,255,0.05);
+  color:var(--paper);
+  cursor:pointer;
+}
+.nav-toggle span,
+.nav-toggle::before,
+.nav-toggle::after{
+  content:"";
+  display:block;
+  width:18px;
+  height:2px;
+  margin:4px auto;
+  border-radius:2px;
+  background:currentColor;
+  transition:transform 220ms ease, opacity 220ms ease;
+}
+body.nav-open .nav-toggle span{opacity:0;}
+body.nav-open .nav-toggle::before{transform:translateY(6px) rotate(45deg);}
+body.nav-open .nav-toggle::after{transform:translateY(-6px) rotate(-45deg);}
+
+/* BUTTONS */
+.btn{
+  position:relative; overflow:hidden;
+  display:inline-flex; align-items:center; justify-content:center;
+  min-height:46px; padding:13px 26px; border-radius:12px; font-size:12px;
+  border:none; cursor:pointer;
+  transition:transform 220ms ease-out, filter 220ms ease-out, opacity 220ms ease-out, box-shadow 220ms ease-out, background 220ms ease-out;
+  transform:translateZ(0);
+}
+.btn-primary{
+  background:linear-gradient(135deg,#FA5F05 0%,#FDB78F 48%,#BC4704 100%);
+  background-size:180% 180%;
+  color:#2A0E02;
+  box-shadow:0 12px 30px rgba(250,95,5,0.28), inset 0 1px 0 rgba(255,255,255,0.45);
+  animation:gradientShift 7s ease infinite;
+}
+.btn-primary:hover{transform:translateY(-2px) scale(1.015); filter:brightness(1.06); box-shadow:0 18px 38px rgba(250,95,5,0.36), inset 0 1px 0 rgba(255,255,255,0.5);}
+.btn-primary:active{transform:scale(0.98);}
+.btn-primary:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+.btn-secondary{
+  background:rgba(255,255,255,0.055);
+  border:1px solid rgba(255,255,255,0.18);
+  color:var(--paper);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.08);
+}
+.btn-secondary:hover{transform:translateY(-2px); background:rgba(255,255,255,0.09); box-shadow:0 16px 30px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.12);}
+.btn-ghost{background:transparent; border:none; color:var(--paper); text-decoration:underline; text-underline-offset:4px; opacity:0.75;}
+.btn-ghost:hover{opacity:1;}
+.btn:focus-visible{outline:2px solid var(--orange); outline-offset:2px;}
+.ripple{
+  position:absolute;
+  width:16px;
+  height:16px;
+  border-radius:50%;
+  background:rgba(255,255,255,0.55);
+  transform:translate(-50%,-50%) scale(0);
+  animation:ripple 620ms ease-out;
+  pointer-events:none;
+}
+@keyframes ripple{to{transform:translate(-50%,-50%) scale(18); opacity:0;}}
+@keyframes gradientShift{0%,100%{background-position:0% 50%;}50%{background-position:100% 50%;}}
+
+/* HERO */
+.hero{
+  min-height:calc(100svh - var(--nav-h));
+  padding:104px 0 138px;
+  background:
+    linear-gradient(rgba(7,8,9,0.48), rgba(7,8,9,0.88)),
+    url("https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1800&q=85") center/cover no-repeat;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+}
+.hero::after{
+  content:"";
+  position:absolute; inset:0;
+  opacity:0.05;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  pointer-events:none;
+}
+.hero::before{
+  content:"";
+  position:absolute;
+  inset:auto 0 -58px;
+  height:130px;
+  z-index:1;
+  background:linear-gradient(180deg, transparent, rgba(11,12,13,0.96) 62%, rgba(11,12,13,1));
+  border-radius:50% 50% 0 0 / 42% 42% 0 0;
+}
+.hero-inner{display:grid; grid-template-columns:minmax(0,1fr); gap:48px; align-items:center; position:relative; z-index:1;}
+.hero-inner > *{min-width:0;}
+@media(min-width:960px){.hero-inner{grid-template-columns:1.1fr 0.9fr;}}
+.eyebrow{color:var(--orange); font-size:12px; letter-spacing:2px;}
+.hero h1{
+  font-size:38px; line-height:1.08; font-style:italic; margin-top:14px;
+  max-width:760px;
+  background:linear-gradient(90deg,#FFFFFF,#FFE5D2 62%,#FDB78F);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  text-shadow:0 28px 80px rgba(0,0,0,0.36);
+}
+@media(min-width:640px){.hero h1{font-size:52px;}}
+@media(min-width:1100px){.hero h1{font-size:60px;}}
+.hero p{margin-top:18px; max-width:540px; color:rgba(246,246,246,0.78); font-size:16px;}
+.hero-ctas{margin-top:32px; display:flex; gap:14px; flex-wrap:wrap;}
+
+.glass{
+  position:relative;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.16), rgba(255,255,255,0.045) 42%, rgba(255,255,255,0.025)),
+    var(--glass-bg);
+  -webkit-backdrop-filter:blur(24px) saturate(165%);
+  backdrop-filter:blur(24px) saturate(165%);
+  border:1px solid var(--glass-border);
+  border-radius:18px;
+  box-shadow:
+    0 24px 80px rgba(0,0,0,0.36),
+    0 6px 18px rgba(0,0,0,0.22),
+    inset 0 1px 0 rgba(255,255,255,0.22),
+    inset 0 -1px 0 rgba(255,255,255,0.06);
+  transform-style:preserve-3d;
+  transition:transform 420ms cubic-bezier(.2,.8,.2,1), box-shadow 420ms ease, border-color 420ms ease;
+}
+.glass::before{
+  content:"";
+  position:absolute;
+  inset:1px 1px auto;
+  height:42%;
+  border-radius:17px 17px 55% 55%;
+  background:linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0));
+  pointer-events:none;
+}
+.glass:hover{
+  transform:translateY(-6px) rotateX(1deg) rotateY(-1deg);
+  border-color:rgba(255,255,255,0.26);
+  box-shadow:
+    0 30px 90px rgba(0,0,0,0.42),
+    0 0 42px rgba(250,95,5,0.12),
+    inset 0 1px 0 rgba(255,255,255,0.25);
+}
+.preview-card{padding:30px; width:min(100%,420px); max-width:420px; justify-self:end; animation:floatSoft 8s ease-in-out infinite;}
+.preview-card .label-caps{font-size:11px; color:rgba(246,246,246,0.55);}
+.preview-price{
+  font-family:'Bodoni Moda',serif; font-style:italic; font-weight:600; font-size:44px; margin-top:8px;
+  background:linear-gradient(90deg,#FA5F05,#FDB78F);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+.preview-meta{margin-top:14px; display:flex; gap:18px; font-size:12px; color:rgba(246,246,246,0.6);}
+@keyframes floatSoft{0%,100%{transform:translateY(0);}50%{transform:translateY(-14px);}}
+
+/* SECTION generic */
+.section{
+  padding:108px 0 132px;
+  background:
+    radial-gradient(circle at 10% 18%, rgba(250,95,5,0.08), transparent 24rem),
+    radial-gradient(circle at 88% 72%, rgba(127,216,190,0.055), transparent 26rem),
+    linear-gradient(180deg, rgba(13,14,16,0.96), rgba(18,18,18,0.94));
+}
+.section:nth-of-type(3){
+  background:
+    radial-gradient(circle at 84% 12%, rgba(253,183,143,0.12), transparent 28rem),
+    linear-gradient(180deg, rgba(14,15,16,0.96), rgba(9,10,11,0.95));
+}
+.section:nth-of-type(4){
+  background:
+    radial-gradient(circle at 18% 66%, rgba(143,140,255,0.10), transparent 24rem),
+    linear-gradient(180deg, rgba(13,14,15,0.97), rgba(16,15,14,0.96));
+}
+@media(min-width:768px){.section{padding:128px 0 152px;}}
+.section-head{max-width:640px; margin:0 auto 48px; text-align:center;}
+.section-head h2{font-size:30px; font-style:italic;}
+@media(min-width:768px){.section-head h2{font-size:36px;}}
+.section-head .eyebrow{display:block; margin-bottom:10px;}
+
+/* FORM CARD / STEPPER */
+.form-card{padding:32px 24px; background-color:var(--glass-strong);}
+@media(min-width:768px){.form-card{padding:48px;}}
+.progress-track{height:5px; background:rgba(255,255,255,0.08); border-radius:999px; overflow:hidden; margin-bottom:10px; box-shadow:inset 0 1px 2px rgba(0,0,0,0.4);}
+.progress-fill{height:100%; background:linear-gradient(90deg,#BC4704,#FA5F05,#FDB78F); background-size:180% 100%; transition:width 300ms ease-out; width:20%; animation:gradientShift 6s ease infinite; box-shadow:0 0 18px rgba(250,95,5,0.55);}
+.step-labels{display:flex; justify-content:space-between; margin-bottom:36px; flex-wrap:wrap; gap:8px;}
+.step-label{font-size:10px; color:rgba(246,246,246,0.35); letter-spacing:1px;}
+.step-label.active{color:var(--orange);}
+.step-label.done{color:rgba(246,246,246,0.7);}
+
+.step{display:none;}
+.step.active{display:block; animation:fadeIn 420ms ease-out;}
+@keyframes fadeIn{from{opacity:0; transform:translateY(14px) scale(0.99);} to{opacity:1; transform:translateY(0) scale(1);}}
+.step h3{font-size:20px; font-style:italic; margin-bottom:6px;}
+.step-desc{color:rgba(246,246,246,0.55); font-size:13px; margin-bottom:28px;}
+
+.field-grid{display:grid; grid-template-columns:1fr; gap:20px;}
+@media(min-width:640px){.field-grid{grid-template-columns:1fr 1fr;}}
+.field{display:flex; flex-direction:column; gap:8px;}
+.field.span2{grid-column:1/-1;}
+.field label{font-size:11px; text-transform:uppercase; letter-spacing:1px; color:rgba(246,246,246,0.6); font-family:'Roboto',sans-serif; font-weight:500;}
+.field .hint{font-size:11px; color:rgba(246,246,246,0.35); font-weight:400; text-transform:none; letter-spacing:0;}
+
+select, input[type="text"], input[type="number"]{
+  background:rgba(255,255,255,0.065);
+  border:1px solid rgba(255,255,255,0.14);
+  border-radius:12px;
+  padding:13px 14px;
+  color:var(--paper);
+  font-family:'Roboto',sans-serif;
+  font-size:14px;
+  outline:none;
+  transition:border-color 200ms, background 200ms, box-shadow 200ms;
+  width:100%;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.05);
+}
+select:hover, input:hover{background:rgba(255,255,255,0.085);}
+select:focus, input:focus{border-color:var(--orange); box-shadow:0 0 0 3px rgba(250,95,5,0.22), 0 0 22px rgba(250,95,5,0.11);}
+select:disabled, input:disabled{opacity:0.35; cursor:not-allowed;}
+select option{background:#161616; color:var(--paper);}
+.error-text{font-size:11px; color:#FF8A5C; min-height:14px;}
+
+/* segmented control */
+.segmented{display:flex; flex-wrap:wrap; gap:8px;}
+.seg-btn{
+  padding:10px 16px; border-radius:11px; border:1px solid rgba(255,255,255,0.12);
+  background:rgba(255,255,255,0.045); color:var(--paper); font-size:13px; cursor:pointer;
+  transition:transform 180ms ease-out, border-color 180ms, background 180ms, box-shadow 180ms; font-family:'Roboto',sans-serif;
+}
+.seg-btn:hover{border-color:rgba(255,255,255,0.3); transform:translateY(-1px);}
+.seg-btn.active{background:linear-gradient(135deg,#FA5F05,#FDB78F); border-color:transparent; color:#2A0E02; font-weight:700; box-shadow:0 10px 26px rgba(250,95,5,0.22);}
+.seg-btn:focus-visible{outline:2px solid var(--orange); outline-offset:2px;}
+
+/* numeric stepper */
+.numstep{display:flex; align-items:center; gap:0; border:1px solid rgba(255,255,255,0.14); border-radius:12px; overflow:hidden; width:fit-content; background:rgba(255,255,255,0.045);}
+.numstep button{
+  background:rgba(255,255,255,0.06); border:none; color:var(--paper); width:40px; height:42px; font-size:16px; cursor:pointer; transition:background 180ms, color 180ms;
+}
+.numstep button:hover{background:rgba(250,95,5,0.2);}
+.numstep input{width:58px; text-align:center; border:none; background:transparent; height:42px; padding:0;}
+
+/* compass */
+.compass{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; max-width:420px;}
+@media(min-width:640px){.compass{grid-template-columns:repeat(4,1fr);}}
+
+/* toggle chips (amenities) */
+.chip-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:14px;}
+@media(min-width:640px){.chip-grid{grid-template-columns:repeat(3,1fr);}}
+.chip{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:14px 16px; border-radius:14px; border:1px solid rgba(255,255,255,0.12);
+  background:rgba(255,255,255,0.045); cursor:pointer; transition:transform 180ms, border-color 180ms, background 180ms, box-shadow 180ms;
+}
+.chip:hover{border-color:rgba(255,255,255,0.25); transform:translateY(-2px);}
+.chip.active{border-color:rgba(250,95,5,0.45); background:rgba(250,95,5,0.11); box-shadow:0 12px 26px rgba(250,95,5,0.11);}
+.chip .chip-label{font-size:13px; display:flex; align-items:center; gap:10px;}
+.switch{width:38px; height:22px; border-radius:20px; background:rgba(255,255,255,0.15); position:relative; flex:none; transition:background 200ms;}
+.switch::after{content:""; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:var(--paper-solid); transition:transform 200ms, background 200ms;}
+.chip.active .switch{background:var(--orange);}
+.chip.active .switch::after{transform:translateX(16px);}
+
+/* sliders */
+.slider-row{display:flex; flex-direction:column; gap:10px;}
+.slider-top{display:flex; justify-content:space-between; align-items:baseline;}
+.slider-val{color:var(--orange); font-weight:700; font-size:15px;}
+input[type=range]{
+  -webkit-appearance:none; appearance:none; width:100%; height:4px; border-radius:4px;
+  background:rgba(255,255,255,0.12); outline:none;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:18px; height:18px; border-radius:50%;
+  background:var(--orange); cursor:pointer; border:3px solid #2A0E02; box-shadow:0 0 0 2px rgba(250,95,5,0.3), 0 0 18px rgba(250,95,5,0.42);
+}
+input[type=range]::-moz-range-thumb{
+  width:18px; height:18px; border-radius:50%; background:var(--orange); cursor:pointer; border:3px solid #2A0E02;
+}
+
+/* gauge */
+.gauge-track{height:8px; border-radius:8px; background:linear-gradient(90deg,#2E8B57,#E8B923,#D9483C); position:relative; margin-top:10px;}
+.gauge-marker{position:absolute; top:-4px; width:4px; height:16px; background:#fff; border-radius:2px; box-shadow:0 0 4px rgba(0,0,0,0.5); transition:left 150ms;}
+
+/* currency input */
+.currency-wrap{position:relative;}
+.currency-wrap span{position:absolute; left:14px; top:50%; transform:translateY(-50%); color:rgba(246,246,246,0.45); font-size:13px;}
+.currency-wrap input{padding-left:34px;}
+
+/* review */
+.review-list{display:grid; grid-template-columns:1fr; gap:0; border-top:1px solid rgba(255,255,255,0.08);}
+@media(min-width:640px){.review-list{grid-template-columns:1fr 1fr;}}
+.review-item{display:flex; justify-content:space-between; padding:12px 4px; border-bottom:1px solid rgba(255,255,255,0.08); font-size:13px;}
+.review-item span:first-child{color:rgba(246,246,246,0.5);}
+.review-edit{text-align:center; margin-top:20px;}
+
+.step-nav{display:flex; justify-content:space-between; margin-top:36px; gap:12px; flex-wrap:wrap;}
+
+/* RESULT */
+.result-wrap{display:none;}
+.result-wrap.active{display:block; animation:fadeIn 420ms ease-out;}
+.result-card{
+  padding:48px 28px; text-align:center;
+  border:1px solid rgba(250,95,5,0.25);
+  box-shadow:0 0 60px rgba(250,95,5,0.15), 0 8px 32px rgba(0,0,0,0.35);
+}
+.result-label{font-size:12px; color:rgba(246,246,246,0.55); letter-spacing:1px;}
+.result-price{
+  font-family:'Bodoni Moda',serif; font-style:italic; font-weight:600; font-size:44px; margin-top:14px;
+  background:linear-gradient(90deg,#FA5F05,#FDB78F); -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+@media(min-width:640px){.result-price{font-size:60px;}}
+.result-sub{margin-top:10px; color:rgba(246,246,246,0.6); font-size:14px;}
+.result-ctas{margin-top:30px; display:flex; gap:14px; justify-content:center; flex-wrap:wrap;}
+.skeleton{
+  height:60px; border-radius:12px; margin-top:14px;
+  background:linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.1) 37%, rgba(255,255,255,0.04) 63%);
+  background-size:400% 100%; animation:shimmer 1.4s ease infinite;
+}
+@keyframes shimmer{0%{background-position:100% 0;} 100%{background-position:0 0;}}
+.api-error{
+  margin-top:20px; padding:16px 18px; border-radius:12px; border:1px solid rgba(217,72,60,0.4);
+  background:rgba(217,72,60,0.08); font-size:13px; color:#FF9B8C; text-align:left;
+}
+
+/* how it works */
+.hiw-grid{display:grid; grid-template-columns:1fr; gap:20px; position:relative;}
+@media(min-width:768px){.hiw-grid{grid-template-columns:repeat(3,1fr);}}
+.hiw-item{
+  padding:28px;
+  border-radius:18px;
+  background:rgba(255,255,255,0.045);
+  border:1px solid rgba(255,255,255,0.10);
+  box-shadow:0 20px 56px rgba(0,0,0,0.23), inset 0 1px 0 rgba(255,255,255,0.08);
+  transition:transform 260ms ease, border-color 260ms, background 260ms;
+}
+.hiw-item:nth-child(2){margin-top:28px;}
+.hiw-item:nth-child(3){margin-top:56px;}
+.hiw-item:hover{transform:translateY(-6px); border-color:rgba(250,95,5,0.26); background:rgba(255,255,255,0.062);}
+.hiw-num{font-family:'Bodoni Moda',serif; font-style:italic; color:var(--orange); font-size:26px;}
+.hiw-item h3{font-size:17px; margin:10px 0 8px; font-style:normal; font-family:'Roboto',sans-serif; font-weight:700;}
+.hiw-item p{color:rgba(246,246,246,0.6); font-size:13.5px;}
+
+/* trust/features */
+.feat-grid{display:grid; grid-template-columns:1fr; gap:20px;}
+@media(min-width:640px){.feat-grid{grid-template-columns:repeat(3,1fr);}}
+.feat-card{padding:30px; min-height:156px; background:linear-gradient(160deg, rgba(51,63,72,0.58), rgba(96,93,91,0.25), rgba(250,95,5,0.08));}
+.feat-card:nth-child(2){transform:translateY(-18px);}
+.feat-card:nth-child(2):hover{transform:translateY(-24px) rotateX(1deg) rotateY(-1deg);}
+.feat-card .num{font-family:'Bodoni Moda',serif; font-style:italic; font-size:34px; color:var(--paper-solid);}
+.feat-card .cap{margin-top:8px; font-size:11px; color:rgba(246,246,246,0.55); letter-spacing:1px;}
+
+/* footer */
+footer{
+  margin-top:-42px;
+  border-top:1px solid rgba(255,255,255,0.08);
+  padding:96px 0 42px;
+  background:
+    radial-gradient(circle at 70% 0%, rgba(250,95,5,0.16), transparent 25rem),
+    linear-gradient(180deg, rgba(9,10,11,0.98), #070809);
+}
+.footer-inner{
+  display:flex; flex-direction:column; gap:24px; align-items:flex-start;
+  padding:30px;
+  border-radius:18px;
+  background:rgba(255,255,255,0.045);
+  border:1px solid rgba(255,255,255,0.11);
+  box-shadow:0 22px 62px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+@media(min-width:768px){.footer-inner{flex-direction:row; justify-content:space-between; align-items:center;}}
+.footer-links{display:flex; gap:20px; list-style:none; padding:0; margin:0; flex-wrap:wrap;}
+.footer-links a{font-size:12px; text-decoration:underline; text-underline-offset:3px; color:rgba(246,246,246,0.65); transition:color 180ms;}
+.footer-links a:hover{color:var(--orange);}
+.disclaimer{margin-top:24px; font-size:11.5px; color:rgba(246,246,246,0.35); max-width:640px;}
+
+.hidden{display:none !important;}
+.count-up{transition:none;}
+
+@media(max-width:900px){
+  .nav-toggle{display:block;}
+  .nav-toggle{position:absolute; right:18px; top:50%; transform:translateY(-50%); background:rgba(255,255,255,0.09); box-shadow:0 10px 28px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.12);}
+  .nav-links{
+    position:fixed;
+    left:16px;
+    right:16px;
+    top:calc(var(--nav-h) + 10px);
+    display:grid;
+    gap:8px;
+    padding:12px;
+    border-radius:18px;
+    background:rgba(13,14,16,0.94);
+    -webkit-backdrop-filter:blur(22px);
+    backdrop-filter:blur(22px);
+    box-shadow:0 24px 80px rgba(0,0,0,0.45);
+    opacity:0;
+    visibility:hidden;
+    transform:translateY(-12px) scale(0.98);
+    transition:opacity 220ms ease, transform 220ms ease, visibility 220ms;
+  }
+  body.nav-open .nav-links{opacity:1; visibility:visible; transform:translateY(0) scale(1);}
+  .nav-links a{justify-content:center; min-height:44px;}
+  .nav-cta{display:none;}
+}
+
+@media(max-width:767px){
+  :root{--nav-h:66px;}
+  .wrap{padding:0 18px;}
+  .section-node + .section-node{margin-top:-26px;}
+  .hero{min-height:auto; padding:76px 0 106px;}
+  .hero-inner{gap:30px;}
+  .hero h1{font-size:34px; max-width:100%; text-wrap:balance;}
+  .hero p{font-size:15px; max-width:calc(100vw - 48px);}
+  .hero-ctas .btn{width:calc(100vw - 36px); max-width:100%;}
+  .preview-card{justify-self:stretch;}
+  .preview-meta{flex-direction:column; gap:4px;}
+  .section{padding:82px 0 104px;}
+  .section-head{margin-bottom:34px; padding:0 8px;}
+  .section-head h2{max-width:300px; margin:0 auto;}
+  .glass{max-width:100%;}
+  .form-card{padding:24px 16px; width:100%;}
+  .step-labels{display:grid; grid-template-columns:repeat(2,1fr); margin-bottom:28px;}
+  .field-grid{gap:16px;}
+  .compass{grid-template-columns:repeat(2,1fr); max-width:none;}
+  .chip-grid{grid-template-columns:1fr;}
+  .step-nav .btn{flex:1 1 140px;}
+  .hiw-item:nth-child(2),
+  .hiw-item:nth-child(3),
+  .feat-card:nth-child(2){margin-top:0; transform:none;}
+  .feat-card:nth-child(2):hover{transform:translateY(-6px) rotateX(1deg) rotateY(-1deg);}
+  .story-line{opacity:0.32;}
+  .story-line svg{left:95%; width:640px;}
+}
+
+@media(max-width:420px){
+  .nav-inner{padding:10px 16px;}
+  .wordmark{font-size:20px;}
+  .hero h1{font-size:34px;}
+  .section-head h2{font-size:27px; line-height:1.18; text-wrap:balance;}
+  .preview-price,.result-price{font-size:40px;}
+  .seg-btn{flex:1 1 auto;}
+  .footer-inner{padding:24px 18px;}
+}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner">
+    <div class="wordmark">Nest<span>imate</span></div>
+    <ul class="nav-links">
+      <li><a href="#top">Home</a></li>
+      <li><a href="#predict">Estimate</a></li>
+      <li><a href="#how-it-works">How it works</a></li>
+      <li><a href="#signals">Signals</a></li>
+      <li><a href="#footer">Contact</a></li>
+    </ul>
+    <a href="#predict" class="btn btn-primary nav-cta">Get your estimate</a>
+    <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<main class="site-shell">
+  <div class="story-line" aria-hidden="true">
+    <svg viewBox="0 0 1000 3600" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="lineGradient" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#FDB78F"/>
+          <stop offset="44%" stop-color="#FA5F05"/>
+          <stop offset="72%" stop-color="#7FD8BE"/>
+          <stop offset="100%" stop-color="#FFFFFF"/>
+        </linearGradient>
+      </defs>
+      <path class="story-path-base" d="M500 0 C760 260 230 510 500 780 C790 1080 220 1370 520 1660 C790 1920 300 2200 500 2460 C710 2735 370 3040 500 3600"/>
+      <path class="story-path-glow" id="storyPath" d="M500 0 C760 260 230 510 500 780 C790 1080 220 1370 520 1660 C790 1920 300 2200 500 2460 C710 2735 370 3040 500 3600"/>
+    </svg>
+    <span class="line-orb" id="lineOrb"></span>
+  </div>
+
+<section class="hero section-node" id="top" data-section>
+  <div class="wrap hero-inner">
+    <div class="reveal">
+      <span class="eyebrow">Instant · Data-backed · 28 signals</span>
+      <h1>Know your home's real worth.</h1>
+      <p>Answer a few questions about your property and get an instant, data-backed valuation — powered by a model trained on real listings across India.</p>
+      <div class="hero-ctas">
+        <a href="#predict" class="btn btn-primary">Get your estimate</a>
+        <a href="#how-it-works" class="btn btn-secondary">How it works</a>
+      </div>
+    </div>
+    <div class="glass preview-card">
+      <div class="label-caps">Sample estimate</div>
+      <div class="preview-price">₹1.24 Cr</div>
+      <div class="preview-meta">
+        <span>3 BHK · Apartment</span>
+        <span>Whitefield, Bengaluru</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-node" id="predict" data-section>
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">Get your estimate</span>
+      <h2>Tell us about the property</h2>
+    </div>
+
+    <div class="glass form-card reveal" style="max-width:820px; margin:0 auto;">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="step-labels" id="stepLabels"></div>
+
+      <form id="predictForm" novalidate>
+
+        <!-- STEP 1: LOCATION -->
+        <div class="step active" data-step="1">
+          <h3>Location</h3>
+          <p class="step-desc">Where is the property located?</p>
+          <div class="field-grid">
+            <div class="field">
+              <label for="State">State</label>
+              <select id="State" name="State" required></select>
+              <div class="error-text" data-err="State"></div>
+            </div>
+            <div class="field">
+              <label for="City">City</label>
+              <select id="City" name="City" required disabled><option value="">Select a state first</option></select>
+              <div class="error-text" data-err="City"></div>
+            </div>
+            <div class="field">
+              <label for="Locality">Locality <span class="hint">(optional)</span></label>
+              <select id="Locality" name="Locality" disabled><option value="">Select a city first</option></select>
+              <div class="error-text" data-err="Locality"></div>
+            </div>
+            <div class="field">
+              <label for="PIN_Code">PIN code <span class="hint">(optional)</span></label>
+              <input type="number" id="PIN_Code" name="PIN_Code" min="100000" max="999999" placeholder="e.g. 751024">
+              <div class="error-text" data-err="PIN_Code"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 2: PROPERTY BASICS -->
+        <div class="step" data-step="2">
+          <h3>Property basics</h3>
+          <p class="step-desc">Size, layout and general condition.</p>
+          <div class="field-grid">
+            <div class="field span2">
+              <label>Property type</label>
+              <div class="segmented" data-group="Property_Type">
+                <button type="button" class="seg-btn" data-value="apartment">Apartment</button>
+                <button type="button" class="seg-btn" data-value="villa">Villa</button>
+                <button type="button" class="seg-btn" data-value="independent house">Independent house</button>
+              </div>
+              <div class="error-text" data-err="Property_Type"></div>
+            </div>
+
+            <div class="field">
+              <label>BHK</label>
+              <div class="numstep" data-numstep="BHK" data-min="1" data-max="10">
+                <button type="button" data-dir="-1">−</button>
+                <input type="text" readonly value="2">
+                <button type="button" data-dir="1">+</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>Bathrooms</label>
+              <div class="numstep" data-numstep="Bathrooms" data-min="1" data-max="10">
+                <button type="button" data-dir="-1">−</button>
+                <input type="text" readonly value="2">
+                <button type="button" data-dir="1">+</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>Balcony</label>
+              <div class="numstep" data-numstep="Balcony" data-min="0" data-max="10">
+                <button type="button" data-dir="-1">−</button>
+                <input type="text" readonly value="1">
+                <button type="button" data-dir="1">+</button>
+              </div>
+            </div>
+            <div class="field">
+              <label for="Floor">Floor</label>
+              <input type="number" id="Floor" name="Floor" min="0" value="2" required>
+              <div class="error-text" data-err="Floor"></div>
+            </div>
+
+            <div class="field span2">
+              <label>Facing</label>
+              <div class="compass" data-group="Facing">
+                <button type="button" class="seg-btn" data-value="north">North</button>
+                <button type="button" class="seg-btn" data-value="north-east">North-East</button>
+                <button type="button" class="seg-btn" data-value="east">East</button>
+                <button type="button" class="seg-btn" data-value="south-east">South-East</button>
+                <button type="button" class="seg-btn" data-value="south">South</button>
+                <button type="button" class="seg-btn" data-value="south-west">South-West</button>
+                <button type="button" class="seg-btn" data-value="west">West</button>
+                <button type="button" class="seg-btn" data-value="north-west">North-West</button>
+              </div>
+              <div class="error-text" data-err="Facing"></div>
+            </div>
+
+            <div class="field">
+              <label for="Builtup_Area_sqft">Built-up area (sqft)</label>
+              <input type="number" id="Builtup_Area_sqft" name="Builtup_Area_sqft" min="1" step="1" placeholder="e.g. 1250" required>
+              <div class="error-text" data-err="Builtup_Area_sqft"></div>
+            </div>
+            <div class="field">
+              <label for="Plot_Area_sqft">Plot area (sqft) <span class="hint">(optional)</span></label>
+              <input type="number" id="Plot_Area_sqft" name="Plot_Area_sqft" min="0" step="1" placeholder="e.g. 1800">
+              <div class="error-text" data-err="Plot_Area_sqft"></div>
+            </div>
+            <div class="field">
+              <label for="Property_Age">Property age (years)</label>
+              <input type="number" id="Property_Age" name="Property_Age" min="0" max="150" value="5" required>
+              <div class="error-text" data-err="Property_Age"></div>
+            </div>
+
+            <div class="field span2">
+              <label>Furnishing status</label>
+              <div class="segmented" data-group="Furnishing_Status">
+                <button type="button" class="seg-btn" data-value="unfurnished">Unfurnished</button>
+                <button type="button" class="seg-btn" data-value="semi furnished">Semi furnished</button>
+                <button type="button" class="seg-btn" data-value="furnished">Furnished</button>
+              </div>
+              <div class="error-text" data-err="Furnishing_Status"></div>
+            </div>
+
+            <div class="field span2">
+              <label>Condition</label>
+              <div class="segmented" data-group="Condition">
+                <button type="button" class="seg-btn" data-value="poor">Poor</button>
+                <button type="button" class="seg-btn" data-value="fair">Fair</button>
+                <button type="button" class="seg-btn" data-value="good">Good</button>
+                <button type="button" class="seg-btn" data-value="excellent">Excellent</button>
+                <button type="button" class="seg-btn" data-value="luxury">Luxury</button>
+              </div>
+              <div class="error-text" data-err="Condition"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 3: AMENITIES -->
+        <div class="step" data-step="3">
+          <h3>Amenities</h3>
+          <p class="step-desc">Toggle what's available at the property.</p>
+          <div class="chip-grid" id="amenityGrid">
+            <div class="chip" data-amenity="Parking"><span class="chip-label">Parking</span><span class="switch"></span></div>
+            <div class="chip" data-amenity="Lift"><span class="chip-label">Lift</span><span class="switch"></span></div>
+            <div class="chip" data-amenity="Gym"><span class="chip-label">Gym</span><span class="switch"></span></div>
+            <div class="chip" data-amenity="Swimming_Pool"><span class="chip-label">Swimming pool</span><span class="switch"></span></div>
+            <div class="chip" data-amenity="Garden"><span class="chip-label">Garden</span><span class="switch"></span></div>
+            <div class="chip" data-amenity="Security"><span class="chip-label">Security</span><span class="switch"></span></div>
+          </div>
+        </div>
+
+        <!-- STEP 4: NEARBY & COSTS -->
+        <div class="step" data-step="4">
+          <h3>Nearby &amp; costs</h3>
+          <p class="step-desc">Distances and recurring costs.</p>
+          <div class="field-grid">
+            <div class="field span2 slider-row">
+              <div class="slider-top"><label style="margin:0;">School distance</label><span class="slider-val" data-sliderval="School_Distance_km">2.0 km</span></div>
+              <input type="range" min="0" max="20" step="0.1" value="2" data-slider="School_Distance_km">
+            </div>
+            <div class="field span2 slider-row">
+              <div class="slider-top"><label style="margin:0;">Hospital distance</label><span class="slider-val" data-sliderval="Hospital_Distance_km">3.0 km</span></div>
+              <input type="range" min="0" max="20" step="0.1" value="3" data-slider="Hospital_Distance_km">
+            </div>
+            <div class="field span2 slider-row">
+              <div class="slider-top"><label style="margin:0;">Metro distance</label><span class="slider-val" data-sliderval="Metro_Distance_km">1.5 km</span></div>
+              <input type="range" min="0" max="20" step="0.1" value="1.5" data-slider="Metro_Distance_km">
+            </div>
+            <div class="field span2 slider-row">
+              <div class="slider-top"><label style="margin:0;">Mall distance</label><span class="slider-val" data-sliderval="Mall_Distance_km">2.5 km</span></div>
+              <input type="range" min="0" max="20" step="0.1" value="2.5" data-slider="Mall_Distance_km">
+            </div>
+
+            <div class="field">
+              <label for="Maintenance_Fee_INR">Maintenance fee (monthly)</label>
+              <div class="currency-wrap"><span>₹</span><input type="number" id="Maintenance_Fee_INR" name="Maintenance_Fee_INR" min="0" value="2500" required></div>
+              <div class="error-text" data-err="Maintenance_Fee_INR"></div>
+            </div>
+            <div class="field">
+              <label for="Property_Tax_INR_Per_Year">Property tax (per year)</label>
+              <div class="currency-wrap"><span>₹</span><input type="number" id="Property_Tax_INR_Per_Year" name="Property_Tax_INR_Per_Year" min="0" value="12000" required></div>
+              <div class="error-text" data-err="Property_Tax_INR_Per_Year"></div>
+            </div>
+
+            <div class="field span2">
+              <div class="slider-top"><label style="margin:0;">Crime rate index</label><span class="slider-val" data-sliderval="Crime_Rate_Index">30</span></div>
+              <input type="range" min="0" max="100" step="1" value="30" data-slider="Crime_Rate_Index" data-gauge="crimeGauge">
+              <div class="gauge-track"><div class="gauge-marker" id="crimeGauge" style="left:30%;"></div></div>
+            </div>
+            <div class="field span2">
+              <div class="slider-top"><label style="margin:0;">AQI</label><span class="slider-val" data-sliderval="AQI">120</span></div>
+              <input type="range" min="0" max="500" step="1" value="120" data-slider="AQI" data-gauge="aqiGauge">
+              <div class="gauge-track"><div class="gauge-marker" id="aqiGauge" style="left:24%;"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 5: REVIEW -->
+        <div class="step" data-step="5">
+          <h3>Review &amp; submit</h3>
+          <p class="step-desc">Check everything looks right before we predict.</p>
+          <div class="review-list" id="reviewList"></div>
+          <div class="review-edit"><a href="#" class="btn-ghost" id="editBtn" style="font-size:12px;">Edit an earlier step</a></div>
+        </div>
+
+        <div class="step-nav">
+          <button type="button" class="btn btn-secondary" id="prevBtn">Back</button>
+          <button type="button" class="btn btn-primary" id="nextBtn">Continue</button>
+          <button type="submit" class="btn btn-primary hidden" id="submitBtn">Predict my price</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- RESULT -->
+    <div class="result-wrap" id="resultWrap" style="max-width:820px; margin:32px auto 0;">
+      <div class="glass result-card" id="resultCard">
+        <div id="resultLoading">
+          <div class="result-label">Crunching the numbers…</div>
+          <div class="skeleton"></div>
+        </div>
+        <div id="resultDone" class="hidden">
+          <div class="result-label">Estimated market value</div>
+          <div class="result-price"><span id="priceValue">₹0</span></div>
+          <div class="result-sub">Based on the 28 details you gave us for this property.</div>
+          <div class="result-ctas">
+            <button type="button" class="btn btn-secondary" id="refineBtn">Refine estimate</button>
+            <button type="button" class="btn btn-primary" id="shareBtn">Share result</button>
+          </div>
+        </div>
+        <div id="resultError" class="hidden">
+          <div class="result-label">We couldn't complete that estimate</div>
+          <div class="api-error" id="errorDetail"></div>
+          <div class="result-ctas">
+            <button type="button" class="btn btn-secondary" id="retryBtn">Back to form</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-node" id="how-it-works" data-section>
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">How it works</span>
+      <h2>Three steps to a number you can trust</h2>
+    </div>
+    <div class="hiw-grid">
+      <div class="hiw-item reveal">
+        <div class="hiw-num">01</div>
+        <h3>Describe the property</h3>
+        <p>Location, size, condition and amenities — the same things a valuer would ask about.</p>
+      </div>
+      <div class="hiw-item reveal">
+        <div class="hiw-num">02</div>
+        <h3>The model does the work</h3>
+        <p>Your inputs run through a model trained on real listings, weighing every signal at once.</p>
+      </div>
+      <div class="hiw-item reveal">
+        <div class="hiw-num">03</div>
+        <h3>Get your estimate</h3>
+        <p>A market value estimate in seconds — refine any answer to see how it moves the number.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-node" id="signals" data-section>
+  <div class="wrap">
+    <div class="feat-grid">
+      <div class="glass feat-card reveal">
+        <div class="num">28</div>
+        <div class="cap">Data points per prediction</div>
+      </div>
+      <div class="glass feat-card reveal">
+        <div class="num">28 states</div>
+        <div class="cap">Covered across India</div>
+      </div>
+      <div class="glass feat-card reveal">
+        <div class="num">&lt; 1s</div>
+        <div class="cap">Typical response time</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer id="footer" class="section-node" data-section>
+  <div class="wrap">
+    <div class="footer-inner reveal">
+      <div>
+        <div class="wordmark">Nest<span>imate</span></div>
+      </div>
+      <ul class="footer-links">
+        <li><a href="#top">Home</a></li>
+        <li><a href="#how-it-works">How it works</a></li>
+        <li><a href="#predict">Get an estimate</a></li>
+      </ul>
+    </div>
+    <div class="disclaimer">Estimates are indicative and not a substitute for professional valuation.</div>
+  </div>
+</footer>
+</main>
+
+<script>
+const API_BASE = "http://127.0.0.1:8000";
+const navToggle = document.querySelector('.nav-toggle');
+const navLinks = document.querySelectorAll('.nav-links a, .nav-cta, .footer-links a, .hero-ctas a');
+
+function navOffset(){
+  const nav = document.querySelector('.nav');
+  return nav ? nav.offsetHeight + 14 : 20;
+}
+
+function scrollToSection(target){
+  const el = typeof target === 'string' ? document.querySelector(target) : target;
+  if(!el) return;
+  window.scrollTo({top:el.offsetTop - navOffset(), behavior:'smooth'});
+}
+
+navLinks.forEach(link=>{
+  const href = link.getAttribute('href');
+  if(href && href.startsWith('#')){
+    link.addEventListener('click', (e)=>{
+      const target = document.querySelector(href);
+      if(!target) return;
+      e.preventDefault();
+      document.body.classList.remove('nav-open');
+      navToggle?.setAttribute('aria-expanded','false');
+      scrollToSection(target);
+    });
+  }
+});
+
+navToggle?.addEventListener('click', ()=>{
+  const isOpen = document.body.classList.toggle('nav-open');
+  navToggle.setAttribute('aria-expanded', String(isOpen));
+});
+
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'Escape'){
+    document.body.classList.remove('nav-open');
+    navToggle?.setAttribute('aria-expanded','false');
+  }
+});
+
+const revealObserver = new IntersectionObserver((entries)=>{
+  entries.forEach(entry=>{
+    if(entry.isIntersecting){
+      entry.target.classList.add('in-view');
+      revealObserver.unobserve(entry.target);
+    }
+  });
+}, {threshold:0.16, rootMargin:'0px 0px -8% 0px'});
+document.querySelectorAll('.reveal, .preview-card').forEach(el=>revealObserver.observe(el));
+
+const sectionObserver = new IntersectionObserver((entries)=>{
+  entries.forEach(entry=>{
+    if(entry.isIntersecting){
+      const id = entry.target.id;
+      document.querySelectorAll('.nav-links a').forEach(link=>{
+        link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
+      });
+    }
+  });
+}, {threshold:0.42, rootMargin:'-18% 0px -48% 0px'});
+document.querySelectorAll('[data-section]').forEach(section=>sectionObserver.observe(section));
+
+const storyPath = document.getElementById('storyPath');
+const lineOrb = document.getElementById('lineOrb');
+let pathLength = 0;
+if(storyPath){
+  pathLength = storyPath.getTotalLength();
+  storyPath.style.strokeDasharray = pathLength;
+  storyPath.style.strokeDashoffset = pathLength;
+}
+
+function updateStoryLine(){
+  if(!storyPath || !lineOrb || !pathLength) return;
+  const doc = document.documentElement;
+  const scrollable = Math.max(doc.scrollHeight - window.innerHeight, 1);
+  const progress = Math.min(Math.max(window.scrollY / scrollable, 0), 1);
+  storyPath.style.strokeDashoffset = pathLength * (1 - progress);
+  const point = storyPath.getPointAtLength(pathLength * progress);
+  const svg = storyPath.closest('svg');
+  const svgRect = svg.getBoundingClientRect();
+  const shellTop = document.querySelector('.site-shell')?.offsetTop || 0;
+  const x = svgRect.left + (point.x / 1000) * svgRect.width;
+  const y = svgRect.top + (point.y / 3600) * svgRect.height + window.scrollY - shellTop;
+  lineOrb.style.left = `${x}px`;
+  lineOrb.style.top = `${y}px`;
+}
+
+let ticking = false;
+window.addEventListener('scroll', ()=>{
+  if(!ticking){
+    window.requestAnimationFrame(()=>{
+      updateStoryLine();
+      ticking = false;
+    });
+    ticking = true;
+  }
+}, {passive:true});
+window.addEventListener('resize', updateStoryLine);
+updateStoryLine();
+
+document.querySelectorAll('.btn').forEach(btn=>{
+  btn.addEventListener('click', (e)=>{
+    const rect = btn.getBoundingClientRect();
+    const ripple = document.createElement('span');
+    ripple.className = 'ripple';
+    ripple.style.left = `${e.clientX - rect.left}px`;
+    ripple.style.top = `${e.clientY - rect.top}px`;
+    btn.appendChild(ripple);
+    window.setTimeout(()=>ripple.remove(), 650);
+  });
+});
+
+const state = {
+  step: 1,
+  totalSteps: 5,
+  data: {
+    BHK: 2, Bathrooms: 2, Balcony: 1,
+    Property_Type: null, Facing: null, Furnishing_Status: null, Condition: null,
+    Parking: "no", Lift: "no", Gym: "no", Swimming_Pool: "no", Garden: "no", Security: "no",
+    School_Distance_km: 2, Hospital_Distance_km: 3, Metro_Distance_km: 1.5, Mall_Distance_km: 2.5,
+    Crime_Rate_Index: 30, AQI: 120
+  }
+};
+
+const stepNames = ["Location","Basics","Amenities","Nearby & costs","Review"];
+const stepLabelsEl = document.getElementById('stepLabels');
+stepNames.forEach((name,i)=>{
+  const span = document.createElement('span');
+  span.className = 'step-label' + (i===0 ? ' active':'');
+  span.textContent = (i+1)+'. '+name;
+  span.dataset.step = i+1;
+  stepLabelsEl.appendChild(span);
+});
+
+function updateProgress(){
+  document.getElementById('progressFill').style.width = (state.step/state.totalSteps*100)+'%';
+  document.querySelectorAll('.step-label').forEach(el=>{
+    const s = parseInt(el.dataset.step);
+    el.classList.toggle('active', s===state.step);
+    el.classList.toggle('done', s<state.step);
+  });
+}
+
+function showStep(n){
+  document.querySelectorAll('.step').forEach(el=>{
+    el.classList.toggle('active', parseInt(el.dataset.step)===n);
+  });
+  document.getElementById('prevBtn').style.visibility = n===1 ? 'hidden' : 'visible';
+  document.getElementById('nextBtn').classList.toggle('hidden', n===state.totalSteps);
+  document.getElementById('submitBtn').classList.toggle('hidden', n!==state.totalSteps);
+  if(n===state.totalSteps){ buildReview(); }
+  updateProgress();
+}
+
+document.getElementById('prevBtn').addEventListener('click', ()=>{
+  if(state.step>1){ state.step--; showStep(state.step); scrollToSection('#predict'); }
+});
+document.getElementById('nextBtn').addEventListener('click', ()=>{
+  if(validateStep(state.step)){
+    state.step++;
+    showStep(state.step);
+    scrollToSection('#predict');
+  }
+});
+document.getElementById('editBtn').addEventListener('click', (e)=>{
+  e.preventDefault();
+  state.step = 1; showStep(1);
+});
+
+/* segmented + compass controls */
+document.querySelectorAll('[data-group]').forEach(group=>{
+  const key = group.dataset.group;
+  group.querySelectorAll('.seg-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      group.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      state.data[key] = btn.dataset.value;
+      clearError(key);
+    });
+  });
+});
+
+/* numeric steppers */
+document.querySelectorAll('[data-numstep]').forEach(ns=>{
+  const key = ns.dataset.numstep;
+  const min = parseInt(ns.dataset.min), max = parseInt(ns.dataset.max);
+  const input = ns.querySelector('input');
+  state.data[key] = parseInt(input.value);
+  ns.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      let v = parseInt(input.value) + parseInt(btn.dataset.dir);
+      v = Math.max(min, Math.min(max, v));
+      input.value = v;
+      state.data[key] = v;
+    });
+  });
+});
+
+/* amenity chips */
+document.querySelectorAll('.chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    const key = chip.dataset.amenity;
+    const isActive = chip.classList.toggle('active');
+    state.data[key] = isActive ? 'yes' : 'no';
+  });
+});
+
+/* sliders */
+document.querySelectorAll('[data-slider]').forEach(sl=>{
+  const key = sl.dataset.slider;
+  const valEl = document.querySelector(`[data-sliderval="${key}"]`);
+  const gaugeId = sl.dataset.gauge;
+  const isKm = key.includes('Distance');
+  function update(){
+    const v = parseFloat(sl.value);
+    state.data[key] = v;
+    valEl.textContent = isKm ? v.toFixed(1)+' km' : v;
+    if(gaugeId){
+      const pct = (v - parseFloat(sl.min)) / (parseFloat(sl.max) - parseFloat(sl.min)) * 100;
+      document.getElementById(gaugeId).style.left = pct+'%';
+    }
+  }
+  sl.addEventListener('input', update);
+  update();
+});
+
+/* plain inputs -> state.data */
+['PIN_Code','Floor','Builtup_Area_sqft','Plot_Area_sqft','Property_Age','Maintenance_Fee_INR','Property_Tax_INR_Per_Year'].forEach(id=>{
+  const el = document.getElementById(id);
+  el.addEventListener('input', ()=>{ state.data[id] = el.value; clearError(id); });
+});
+
+/* location dropdowns */
+const stateSel = document.getElementById('State');
+const citySel = document.getElementById('City');
+const localitySel = document.getElementById('Locality');
+
+async function loadStates(){
+  try{
+    const res = await fetch(`${API_BASE}/states`);
+    if(!res.ok) throw new Error('Failed to load states');
+    const states = await res.json();
+    stateSel.innerHTML = '<option value="">Select a state</option>' + states.map(s=>`<option value="${s}">${cap(s)}</option>`).join('');
+  }catch(err){
+    stateSel.innerHTML = '<option value="">Could not load — is the API running?</option>';
+  }
+}
+function cap(s){ return s.replace(/\b\w/g, c=>c.toUpperCase()); }
+
+stateSel.addEventListener('change', async ()=>{
+  const s = stateSel.value;
+  state.data.State = s;
+  state.data.City = null; state.data.Locality = null;
+  citySel.innerHTML = '<option value="">Loading…</option>';
+  citySel.disabled = true;
+  localitySel.innerHTML = '<option value="">Select a city first</option>';
+  localitySel.disabled = true;
+  clearError('State');
+  if(!s) { citySel.innerHTML = '<option value="">Select a state first</option>'; return; }
+  try{
+    const res = await fetch(`${API_BASE}/cities/${encodeURIComponent(s)}`);
+    if(!res.ok) throw new Error();
+    const cities = await res.json();
+    citySel.innerHTML = '<option value="">Select a city</option>' + cities.map(c=>`<option value="${c}">${cap(c)}</option>`).join('');
+    citySel.disabled = false;
+  }catch(err){
+    citySel.innerHTML = '<option value="">Could not load cities</option>';
+  }
+});
+
+citySel.addEventListener('change', async ()=>{
+  const s = stateSel.value, c = citySel.value;
+  state.data.City = c;
+  state.data.Locality = null;
+  clearError('City');
+  localitySel.innerHTML = '<option value="">Loading…</option>';
+  localitySel.disabled = true;
+  if(!c){ localitySel.innerHTML = '<option value="">Select a city first</option>'; return; }
+  try{
+    const res = await fetch(`${API_BASE}/localities/${encodeURIComponent(s)}/${encodeURIComponent(c)}`);
+    if(!res.ok) throw new Error();
+    const localities = await res.json();
+    localitySel.innerHTML = '<option value="">Optional — select a locality</option>' + localities.map(l=>`<option value="${l}">${cap(l)}</option>`).join('');
+    localitySel.disabled = false;
+  }catch(err){
+    localitySel.innerHTML = '<option value="">Could not load localities</option>';
+  }
+});
+localitySel.addEventListener('change', ()=>{ state.data.Locality = localitySel.value || null; });
+
+loadStates();
+
+/* validation */
+function clearError(key){
+  const el = document.querySelector(`[data-err="${key}"]`);
+  if(el) el.textContent = '';
+}
+function setError(key, msg){
+  const el = document.querySelector(`[data-err="${key}"]`);
+  if(el) el.textContent = msg;
+}
+
+function validateStep(n){
+  let ok = true;
+  if(n===1){
+    if(!state.data.State){ setError('State','Please choose a state'); ok=false; } else clearError('State');
+    if(!state.data.City){ setError('City','Please choose a city'); ok=false; } else clearError('City');
+    if(state.data.PIN_Code && (state.data.PIN_Code < 100000 || state.data.PIN_Code > 999999)){
+      setError('PIN_Code','PIN code must be 6 digits'); ok=false;
+    } else clearError('PIN_Code');
+  }
+  if(n===2){
+    if(!state.data.Property_Type){ setError('Property_Type','Choose a property type'); ok=false; } else clearError('Property_Type');
+    if(!state.data.Facing){ setError('Facing','Choose a facing direction'); ok=false; } else clearError('Facing');
+    if(!state.data.Furnishing_Status){ setError('Furnishing_Status','Choose a furnishing status'); ok=false; } else clearError('Furnishing_Status');
+    if(!state.data.Condition){ setError('Condition','Choose a condition'); ok=false; } else clearError('Condition');
+    if(!state.data.Builtup_Area_sqft || parseFloat(state.data.Builtup_Area_sqft)<=0){ setError('Builtup_Area_sqft','Enter a built-up area'); ok=false; } else clearError('Builtup_Area_sqft');
+    if(state.data.Floor === undefined || state.data.Floor === '' || parseFloat(state.data.Floor)<0){ setError('Floor','Enter a floor number'); ok=false; } else clearError('Floor');
+  }
+  if(n===4){
+    if(state.data.Maintenance_Fee_INR === undefined || state.data.Maintenance_Fee_INR===''){ setError('Maintenance_Fee_INR','Enter a maintenance fee'); ok=false; } else clearError('Maintenance_Fee_INR');
+    if(state.data.Property_Tax_INR_Per_Year === undefined || state.data.Property_Tax_INR_Per_Year===''){ setError('Property_Tax_INR_Per_Year','Enter a property tax'); ok=false; } else clearError('Property_Tax_INR_Per_Year');
+  }
+  return ok;
+}
+
+/* review */
+const reviewFields = [
+  ['State','State'],['City','City'],['Locality','Locality'],['PIN_Code','PIN code'],
+  ['Property_Type','Property type'],['BHK','BHK'],['Bathrooms','Bathrooms'],['Balcony','Balcony'],
+  ['Facing','Facing'],['Floor','Floor'],['Builtup_Area_sqft','Built-up area (sqft)'],['Plot_Area_sqft','Plot area (sqft)'],
+  ['Property_Age','Property age'],['Furnishing_Status','Furnishing'],['Condition','Condition'],
+  ['Parking','Parking'],['Lift','Lift'],['Gym','Gym'],['Swimming_Pool','Swimming pool'],['Garden','Garden'],['Security','Security'],
+  ['School_Distance_km','School distance (km)'],['Hospital_Distance_km','Hospital distance (km)'],
+  ['Metro_Distance_km','Metro distance (km)'],['Mall_Distance_km','Mall distance (km)'],
+  ['Maintenance_Fee_INR','Maintenance fee'],['Property_Tax_INR_Per_Year','Property tax / yr'],
+  ['Crime_Rate_Index','Crime rate index'],['AQI','AQI']
+];
+function buildReview(){
+  const list = document.getElementById('reviewList');
+  list.innerHTML = '';
+  reviewFields.forEach(([key,label])=>{
+    const val = state.data[key];
+    const display = (val===null || val===undefined || val==='') ? '—' : val;
+    const item = document.createElement('div');
+    item.className = 'review-item';
+    item.innerHTML = `<span>${label}</span><span>${display}</span>`;
+    list.appendChild(item);
+  });
+}
+
+/* submit */
+document.getElementById('predictForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const resultWrap = document.getElementById('resultWrap');
+  resultWrap.classList.add('active');
+  document.getElementById('resultLoading').classList.remove('hidden');
+  document.getElementById('resultDone').classList.add('hidden');
+  document.getElementById('resultError').classList.add('hidden');
+  document.getElementById('resultCard').scrollIntoView({behavior:'smooth', block:'center'});
+
+  const payload = {
+    State: state.data.State,
+    City: state.data.City,
+    Locality: state.data.Locality || null,
+    PIN_Code: state.data.PIN_Code ? parseInt(state.data.PIN_Code) : null,
+    Property_Type: state.data.Property_Type,
+    BHK: state.data.BHK,
+    Bathrooms: state.data.Bathrooms,
+    Balcony: state.data.Balcony,
+    Facing: state.data.Facing,
+    Floor: parseInt(state.data.Floor),
+    Builtup_Area_sqft: parseFloat(state.data.Builtup_Area_sqft),
+    Plot_Area_sqft: state.data.Plot_Area_sqft ? parseFloat(state.data.Plot_Area_sqft) : null,
+    Property_Age: parseInt(state.data.Property_Age),
+    Furnishing_Status: state.data.Furnishing_Status,
+    Parking: state.data.Parking,
+    Lift: state.data.Lift,
+    Gym: state.data.Gym,
+    Swimming_Pool: state.data.Swimming_Pool,
+    Garden: state.data.Garden,
+    Security: state.data.Security,
+    School_Distance_km: state.data.School_Distance_km,
+    Hospital_Distance_km: state.data.Hospital_Distance_km,
+    Metro_Distance_km: state.data.Metro_Distance_km,
+    Mall_Distance_km: state.data.Mall_Distance_km,
+    Condition: state.data.Condition,
+    Maintenance_Fee_INR: parseFloat(state.data.Maintenance_Fee_INR),
+    Property_Tax_INR_Per_Year: parseFloat(state.data.Property_Tax_INR_Per_Year),
+    Crime_Rate_Index: state.data.Crime_Rate_Index,
+    AQI: state.data.AQI
+  };
+
+  try{
+    const res = await fetch(`${API_BASE}/predict`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if(!res.ok){
+      const body = await res.json().catch(()=>null);
+      let msg = 'The server rejected this request.';
+      if(body && body.detail){
+        if(Array.isArray(body.detail)){
+          msg = body.detail.map(d=>`${(d.loc||[]).slice(-1)[0]}: ${d.msg}`).join(' · ');
+        } else {
+          msg = String(body.detail);
+        }
+      }
+      throw new Error(msg);
+    }
+    const data = await res.json();
+    showResult(data.predicted_price_inr);
+  }catch(err){
+    document.getElementById('resultLoading').classList.add('hidden');
+    document.getElementById('resultError').classList.remove('hidden');
+    document.getElementById('errorDetail').textContent = err.message || 'Something went wrong. Check that the API at '+API_BASE+' is running.';
+  }
+});
+
+function showResult(price){
+  document.getElementById('resultLoading').classList.add('hidden');
+  document.getElementById('resultDone').classList.remove('hidden');
+  const el = document.getElementById('priceValue');
+  const target = Math.round(price);
+  let startTime = null;
+  const duration = 900;
+  function frame(ts){
+    if(!startTime) startTime = ts;
+    const progress = Math.min((ts-startTime)/duration, 1);
+    const eased = 1 - Math.pow(1-progress, 3);
+    const current = Math.round(target * eased);
+    el.textContent = '₹' + current.toLocaleString('en-IN');
+    if(progress < 1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+document.getElementById('refineBtn').addEventListener('click', ()=>{
+  document.getElementById('resultWrap').classList.remove('active');
+  scrollToSection('#predict');
+});
+document.getElementById('retryBtn').addEventListener('click', ()=>{
+  document.getElementById('resultWrap').classList.remove('active');
+});
+document.getElementById('shareBtn').addEventListener('click', ()=>{
+  const text = document.getElementById('priceValue').textContent;
+  navigator.clipboard?.writeText(`My estimated home value: ${text} (via Nestimate)`);
+  const btn = document.getElementById('shareBtn');
+  const orig = btn.textContent;
+  btn.textContent = 'Copied!';
+  setTimeout(()=>{ btn.textContent = orig; }, 1500);
+});
+
+showStep(1);
+</script>
+</body>
+</html>
