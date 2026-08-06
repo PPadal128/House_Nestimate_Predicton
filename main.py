@@ -6,14 +6,17 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Literal, Optional
+from pathlib import Path
+import logging
 
 
 # ============================================================
 # STEP 1: Load locations.json (ONE TIME, when the app starts)
 # We do NOT modify this file. We just read it into memory.
 # ============================================================
-with open("locations.json", "r", encoding="utf-8") as file:
-    LOCATION_DATA_RAW = json.load(file)
+# Lazy placeholders — actual loading happens on startup to allow clear startup errors
+LOCATION_DATA_RAW = None
+LOCATION_DATA = {}
 
 
 # ============================================================
@@ -48,13 +51,15 @@ def build_lowercase_locations(raw_data: dict) -> dict:
     return lower_data
 
 
-LOCATION_DATA = build_lowercase_locations(LOCATION_DATA_RAW)
+# LOCATION_DATA will be populated on startup by loading locations.json
+# LOCATION_DATA = build_lowercase_locations(LOCATION_DATA_RAW)
 
 
 # ============================================================
 # STEP 3: Load the trained ML model
 # ============================================================
-model = joblib.load("house_price_prediction_lrmodel_.pkl")
+# Model is loaded on startup to provide clearer errors if file is missing/corrupt
+model = None
 
 
 # ============================================================
@@ -69,6 +74,64 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Setup logging
+logger = logging.getLogger("house-price-api")
+logging.basicConfig(level=logging.INFO)
+
+# Paths (resolved relative to this file) — makes app robust to working directory
+BASE_DIR = Path(__file__).parent
+LOCATIONS_PATH = BASE_DIR / "locations.json"
+MODEL_PATH = BASE_DIR / "house_price_prediction_lrmodel_.pkl"
+
+# Startup state
+startup_error: Optional[str] = None
+
+
+def load_location_data(path: Path) -> dict:
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            raw = json.load(f)
+    except Exception as e:
+        raise RuntimeError(f"Failed to load locations.json from {path}: {e}") from e
+    return build_lowercase_locations(raw)
+
+
+def load_model(path: Path):
+    try:
+        return joblib.load(path)
+    except Exception as e:
+        raise RuntimeError(f"Failed to load model from {path}: {e}") from e
+
+
+@app.on_event("startup")
+def startup_event():
+    """Load locations.json and ML model on startup with clear logging/errors."""
+    global LOCATION_DATA_RAW, LOCATION_DATA, model, startup_error
+    try:
+        logger.info("Loading locations from %s", LOCATIONS_PATH)
+        LOCATION_DATA_RAW = json.loads(LOCATIONS_PATH.read_text(encoding="utf-8"))
+        LOCATION_DATA = build_lowercase_locations(LOCATION_DATA_RAW)
+        logger.info("Loaded locations: %d states", len(LOCATION_DATA))
+    except Exception as e:
+        startup_error = str(e)
+        logger.exception("Error loading locations.json: %s", e)
+
+    try:
+        logger.info("Loading model from %s", MODEL_PATH)
+        model = joblib.load(MODEL_PATH)
+        logger.info("Model loaded successfully")
+    except Exception as e:
+        startup_error = (startup_error + "; " if startup_error else "") + str(e)
+        logger.exception("Error loading model: %s", e)
+
+
+@app.get("/health")
+def health():
+    if startup_error:
+        raise HTTPException(status_code=503, detail=f"Startup error: {startup_error}")
+    return {"status": "ok", "model_loaded": model is not None, "states": len(LOCATION_DATA)}
 
 
 # List of fields that must always be lowercased (all text/category fields)
@@ -163,11 +226,19 @@ def greet():
 
 @app.get("/states", response_model=list[str])
 def get_states():
+    if startup_error:
+        raise HTTPException(status_code=503, detail=f"Service not ready: {startup_error}")
+    if not LOCATION_DATA:
+        raise HTTPException(status_code=503, detail="Location data not loaded.")
     return sorted(LOCATION_DATA.keys())
 
 
 @app.get("/cities/{state}", response_model=list[str])
 def get_cities(state: str):
+    if startup_error:
+        raise HTTPException(status_code=503, detail=f"Service not ready: {startup_error}")
+    if not LOCATION_DATA:
+        raise HTTPException(status_code=503, detail="Location data not loaded.")
     state = state.strip().lower()
     if state not in LOCATION_DATA:
         raise HTTPException(status_code=404, detail=f"State '{state}' not found.")
@@ -176,6 +247,10 @@ def get_cities(state: str):
 
 @app.get("/localities/{state}/{city}", response_model=list[str])
 def get_localities(state: str, city: str):
+    if startup_error:
+        raise HTTPException(status_code=503, detail=f"Service not ready: {startup_error}")
+    if not LOCATION_DATA:
+        raise HTTPException(status_code=503, detail="Location data not loaded.")
     state = state.strip().lower()
     city = city.strip().lower()
     if state not in LOCATION_DATA:
@@ -189,6 +264,12 @@ def get_localities(state: str, city: str):
 
 @app.post("/predict", response_model=PredictionResponse)
 def predict(data: HouseData):
+    # Ensure app started up correctly
+    if startup_error:
+        raise HTTPException(status_code=503, detail=f"Service not ready: {startup_error}")
+    if model is None:
+        raise HTTPException(status_code=503, detail="ML model not loaded.")
+
     # At this point:
     # - every text field is already lowercase
     # - State/City/Locality are already confirmed valid against locations.json
@@ -224,9 +305,13 @@ def predict(data: HouseData):
         "AQI": data.AQI,
     }])
 
-    log_prediction = model.predict(input_data)[0]
+    try:
+        log_prediction = model.predict(input_data)[0]
+        # Model was trained on np.log1p(price), so we reverse it with np.expm1()
+        actual_price = np.expm1(log_prediction)
+        predicted_price = float(round(actual_price, 2))
+    except Exception as e:
+        logger.exception("Prediction failed: %s", e)
+        raise HTTPException(status_code=500, detail=f"Prediction error: {e}")
 
-    # Model was trained on np.log1p(price), so we reverse it with np.expm1()
-    actual_price = np.expm1(log_prediction)
-
-    return PredictionResponse(predicted_price_inr=round(float(actual_price)))
+    return PredictionResponse(predicted_price_inr=predicted_price)
